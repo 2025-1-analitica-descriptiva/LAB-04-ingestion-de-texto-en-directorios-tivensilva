@@ -1,73 +1,52 @@
-# pylint: disable=import-outside-toplevel
-# pylint: disable=line-too-long
-# flake8: noqa
-"""
-Escriba el codigo que ejecute la accion solicitada en cada pregunta.
-"""
+import shutil
+import zipfile
+import pandas as pd
+from pathlib import Path
 
+# Paths
+INPUT_ZIP = Path("files/input.zip")
+EXTRACT_DIR = Path("files/input")
+OUTPUT_DIR = Path("files/output")
+
+def extract_input_zip(zip_path: Path = INPUT_ZIP, extract_to: Path = EXTRACT_DIR) -> None:
+    """
+    Extrae el ZIP de entrada en una carpeta limpia,
+    eliminando antes cualquier extracción previa.
+    """
+    if extract_to.exists():
+        shutil.rmtree(extract_to)
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(extract_to)
+
+def load_dataset(extract_dir: Path, subset: str) -> pd.DataFrame:
+    """
+    Recorre la carpeta extraída y carga los archivos .txt
+    cuyo path contenga el nombre del subset ('train' o 'test'),
+    devolviendo un DataFrame con columnas 'phrase' y 'target'.
+    """
+    data = {"phrase": [], "target": []}
+    for txt_file in extract_dir.rglob("*.txt"):
+        # Solo archivo si pertenece al subset correcto
+        if subset in txt_file.parts:
+            text = txt_file.read_text(encoding="utf-8").strip()
+            label = txt_file.parent.name
+            data["phrase"].append(text)
+            data["target"].append(label)
+    return pd.DataFrame(data)
 
 def pregunta_01():
     """
-    La información requerida para este laboratio esta almacenada en el
-    archivo "files/input.zip" ubicado en la carpeta raíz.
-    Descomprima este archivo.
-
-    Como resultado se creara la carpeta "input" en la raiz del
-    repositorio, la cual contiene la siguiente estructura de archivos:
-
-
-    ```
-    train/
-        negative/
-            0000.txt
-            0001.txt
-            ...
-        positive/
-            0000.txt
-            0001.txt
-            ...
-        neutral/
-            0000.txt
-            0001.txt
-            ...
-    test/
-        negative/
-            0000.txt
-            0001.txt
-            ...
-        positive/
-            0000.txt
-            0001.txt
-            ...
-        neutral/
-            0000.txt
-            0001.txt
-            ...
-    ```
-
-    A partir de esta informacion escriba el código que permita generar
-    dos archivos llamados "train_dataset.csv" y "test_dataset.csv". Estos
-    archivos deben estar ubicados en la carpeta "output" ubicada en la raiz
-    del repositorio.
-
-    Estos archivos deben tener la siguiente estructura:
-
-    * phrase: Texto de la frase. hay una frase por cada archivo de texto.
-    * sentiment: Sentimiento de la frase. Puede ser "positive", "negative"
-      o "neutral". Este corresponde al nombre del directorio donde se
-      encuentra ubicado el archivo.
-
-    Cada archivo tendria una estructura similar a la siguiente:
-
-    ```
-    |    | phrase                                                                                                                                                                 | target   |
-    |---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|:---------|
-    |  0 | Cardona slowed her vehicle , turned around and returned to the intersection , where she called 911                                                                     | neutral  |
-    |  1 | Market data and analytics are derived from primary and secondary research                                                                                              | neutral  |
-    |  2 | Exel is headquartered in Mantyharju in Finland                                                                                                                         | neutral  |
-    |  3 | Both operating profit and net sales for the three-month period increased , respectively from EUR16 .0 m and EUR139m , as compared to the corresponding quarter in 2006 | positive |
-    |  4 | Tampere Science Parks is a Finnish company that owns , leases and builds office properties and it specialises in facilities for technology-oriented businesses         | neutral  |
-    ```
-
-
+    Orquesta la extracción del ZIP, la carga de los datasets
+    de entrenamiento y prueba, y guarda ambos como CSV.
     """
+    # 1) Extraer ZIP de entrada
+    extract_input_zip()
+
+    # 2) Cargar DataFrames de train y test
+    train_df = load_dataset(EXTRACT_DIR, subset="train")
+    test_df  = load_dataset(EXTRACT_DIR, subset="test")
+
+    # 3) Crear carpeta de salida y guardar CSVs
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    train_df.to_csv(OUTPUT_DIR / "train_dataset.csv", index=False)
+    test_df.to_csv(OUTPUT_DIR / "test_dataset.csv",  index=False)
